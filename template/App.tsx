@@ -1,115 +1,150 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * Generated with the TypeScript template
- * https://github.com/react-native-community/react-native-template-typescript
- *
- * @format
- */
+import React, { useEffect } from "react";
+import { NavigationContainer, NavigationContainerRef } from "@react-navigation/native";
+import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
+import HomeScreen from "./src/screens/HomeScreen/HomeScreen";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import useAuthState from "./src/hooks/useAuthState";
+import SplashScreen from "./src/screens/SplashScreen/SplashScreen";
+import LoginScreen from "./src/screens/LoginScreen/LoginScreen";
+import RegisterScreen from "./src/screens/RegisterScreen/RegisterScreen";
+import AuthModuleProvider, { AuthContextType, AuthData } from "./src/context/AuthModuleProvider";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { StatusBar } from "react-native";
+import AppColors from "./src/styles/AppColors";
 
-import React from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
-
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-const Section: React.FC<{
-  title: string;
-}> = ({children, title}) => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
+export type RootStackParamList = {
+  SplashScreen: undefined,
+  LoginScreen: undefined,
+  RegisterScreen: undefined,
+  HomeScreen: undefined,
 };
+
+export const RootStack = createNativeStackNavigator<RootStackParamList>();
+export const NavigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
+
+export const AUTH_USER_KEY = "@auth_data";
 
 const App = () => {
-  const isDarkMode = useColorScheme() === 'dark';
+  const { authState, dispatch } = useAuthState();
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+  const storeAuthData = async (value: AuthData) => {
+    try {
+      const jsonValue = JSON.stringify(value);
+      await AsyncStorage.setItem(AUTH_USER_KEY, jsonValue);
+      //todo: set token to api client
+      dispatch({ type: "SIGN_IN", payload: value });
+    } catch (e) {
+      throw Error("[App] Can not store auth data");
+    }
   };
 
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+  const retrieveAuthData = async () => {
+    try {
+      const res = await AsyncStorage.getItem(AUTH_USER_KEY);
+      // fake delay
+      await new Promise(r => setTimeout(r, 2000));
+      if (res) {
+        const _payload = JSON.parse(res);
+        //todo: set token to api client
+        dispatch({ type: "RESTORE", payload: _payload });
+      } else {
+        // no data
+        dispatch({ type: "RESTORE", payload: {} });
+      }
+    } catch (e) {
+      throw Error("[App] Can not get auth data");
+    }
+  };
+
+  const removeAuthData = async () => {
+    try {
+      await AsyncStorage.removeItem(AUTH_USER_KEY);
+      dispatch({ type: "SIGN_OUT", payload: {} });
+    } catch (e) {
+      throw Error("[App] Can not remove auth data");
+    }
+  };
+
+  const authActions: AuthContextType = React.useMemo(
+    () => ({
+      signIn: async (_payload: AuthData) => {
+        try {
+          await storeAuthData(_payload);
+        } catch (e) {
+
+        }
+      },
+      signOut: async () => {
+        try {
+          await removeAuthData();
+        } catch (e) {
+
+        }
+      },
+      restore: async () => {
+        try {
+          await retrieveAuthData();
+        } catch (e) {
+
+        }
+      },
+    }),
+    [],
   );
+
+
+  useEffect(() => {
+    // when open app, restore the user auth, if not have auth data you have to go to log in screen
+    authActions.restore();
+
+    //todo: handle api not valid (status 401 => auto logout)
+    // addTokenFailListener(() => {
+    //   authActions.signOut();
+    // });
+  }, []);
+
+  if (authState.isLoading) {
+    return <SplashScreen />;
+  }
+
+  return <SafeAreaProvider
+    initialMetrics={initialWindowMetrics}>
+    <StatusBar
+      translucent
+      barStyle={"dark-content"}
+      backgroundColor={AppColors.color_transparent}
+    />
+    <NavigationContainer
+      ref={NavigationRef}>
+      <AuthModuleProvider
+        user={authState.user}
+        authActions={authActions}>
+        <RootStack.Navigator
+          screenOptions={{ headerShown: false }}>
+          {
+            authState.user
+              ?
+              <>
+                <RootStack.Screen
+                  name={"HomeScreen"}
+                  component={HomeScreen} />
+              </>
+              :
+              <>
+                <RootStack.Screen
+                  name={"LoginScreen"}
+                  component={LoginScreen} />
+
+                <RootStack.Screen
+                  name={"RegisterScreen"}
+                  component={RegisterScreen} />
+              </>
+          }
+        </RootStack.Navigator>
+      </AuthModuleProvider>
+    </NavigationContainer>
+  </SafeAreaProvider>;
 };
 
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
 
 export default App;

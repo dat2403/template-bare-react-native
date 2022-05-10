@@ -9,7 +9,7 @@ import useAuth from "../../hooks/useAuth";
 const RegisterScreen: React.FC = () => {
   const [registerName, setRegisterName] = useState("");
   const [isValid, setValid] = useState(false);
-  const { signIn } = useAuth();
+  const {signIn} = useAuth()
   return <SafeAreaView
     style={AppStyles.container}>
     <AppBar
@@ -27,10 +27,9 @@ const RegisterScreen: React.FC = () => {
           () => {
             signIn({
               user: {
-                username: registerName,
-              },
-              token: registerName,
-            });
+                username: registerName
+              }
+            })
           }
         }
         title={"Register"}

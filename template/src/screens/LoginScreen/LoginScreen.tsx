@@ -1,8 +1,8 @@
 import React from "react";
 import { Button, SafeAreaView, Text } from "react-native";
-import useAuth from "../../hooks/useAuth";
 import AppStyles from "../../styles/AppStyles";
 import { NavigationRef } from "../../../App";
+import useAuth from "../../hooks/useAuth";
 
 const LoginScreen: React.FC = () => {
   const { signIn } = useAuth();
@@ -14,10 +14,9 @@ const LoginScreen: React.FC = () => {
         () => {
           signIn({
             user: {
-              username: "Dung nguyen BKA",
-            },
-            token: "demo_token",
-          });
+              username: "Dung Nguyen BKA"
+            }
+          })
         }
       }
       title={"LOGIN WITH DUNG NGUYEN BKA"} />

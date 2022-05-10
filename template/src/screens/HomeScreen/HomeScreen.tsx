@@ -4,11 +4,12 @@ import AppStyles from "../../styles/AppStyles";
 import useAuth from "../../hooks/useAuth";
 
 const HomeScreen: React.FC = () => {
-  const { username, signOut } = useAuth();
+  const { authData, signOut } = useAuth();
+  const user = authData.user;
   return <SafeAreaView
     style={AppStyles.centerContainer}>
     <Text>HOME SCREEN</Text>
-    <Text>{username}</Text>
+    <Text>{user?.username || "Not sign in"}</Text>
     <Button
       onPress={
         () => {
